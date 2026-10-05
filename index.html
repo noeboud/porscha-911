@@ -134,6 +134,7 @@ button:focus-visible,[role=switch]:focus-visible{outline:2px solid var(--accent)
 /* ---------- detail panels & panes ---------- */
 .panels,.pane{position:absolute;z-index:5;left:max(29.5vw,calc(var(--sbw) + var(--qb) + 48px));width:clamp(250px,19.6vw,330px);top:50%;transform:translateY(-54%);display:flex;flex-direction:column;gap:clamp(24px,7vh,100px);pointer-events:none}
 .pane{gap:16px;width:clamp(270px,22vw,360px)}
+.pane .card.fit{box-sizing:border-box;width:clamp(250px,19.6vw,330px)} /* single-switch card sized like the Commandes detail cards */
 .card{pointer-events:auto;border:1px solid transparent;background:linear-gradient(#fff,#fff) padding-box,var(--edge) border-box;border-radius:8px;padding:12px 14px 14px;box-shadow:0 4px 8px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.04) inset,0 0 0 .5px rgba(0,0,0,.04);
   opacity:0;transform:translateX(-22px);transition:opacity .45s var(--ease),transform .6s var(--ease);transition-delay:calc(var(--i,0) * 90ms)}
 .panels.show .card,.pane.show .card{opacity:1;transform:none}
@@ -217,6 +218,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   .panels{flex-direction:row}
   .panels .card{flex:1;min-width:0}
   .pane{bottom:88px;max-height:calc(100% - 240px);overflow:auto}
+  .pane .card.fit{width:auto}
   .switch{height:50px}
   .switch .lab{font-size:20px}
   .card h3{font-size:15px}
@@ -932,9 +934,9 @@ function renderPane(){
   paneTimer=setTimeout(()=>{
     let h='';
     if(S.tab==='camera') h=`
-      <section class="card" style="--i:0"><h3>Vue 360°</h3>
-        <div class="row"><span class="k">Radars de stationnement</span>${switchHTML('sensors')}</div>
-        <div class="row"><span class="pill ok"><i></i>Aucun obstacle</span></div>
+      <section class="card fit" style="--i:0"><h3>Radars de stationnement</h3>
+        ${switchHTML('sensors')}
+        <div class="sub">Vue 360°</div><span class="pill ok"><i></i>Aucun obstacle</span>
       </section>`;
     if(S.tab==='carplay') h=`
       <section class="card" style="--i:0"><h3>CarPlay</h3>
