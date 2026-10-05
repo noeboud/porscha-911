@@ -13,6 +13,11 @@ node serve.js
 
 Then open http://localhost:5173. `serve.js` adds the document wrapper the artifact host would.
 
+## Deploy on Vercel
+
+Import the repo in Vercel; `vercel.json` needs no settings. `node build.js` wraps `index.html` in a proper
+document (`wrap.js`, shared with `serve.js`) and writes `dist/index.html`, which Vercel serves.
+
 ## Continue with Claude
 
 Open this folder in Claude Code and ask for changes. To publish, ask Claude to update the artifact at the link above from `index.html` (it keeps the same URL).
