@@ -1,0 +1,5 @@
+node_modules/
+*.bak.html
+*.part.js
+.DS_Store
+Thumbs.db
