@@ -99,9 +99,7 @@ button:focus-visible,[role=switch]:focus-visible{outline:2px solid var(--accent)
   box-shadow:0 2px 4px rgba(0,0,0,.1),0 7px 7px rgba(0,0,0,.09),0 16px 10px rgba(0,0,0,.05),0 28px 11px rgba(0,0,0,.01);opacity:0;transform:scale(.8);pointer-events:none;transition:opacity .4s,transform .5s var(--ease)}
 .close svg{width:46%;height:46%}
 .hint{position:absolute;z-index:4;top:max(19.5%,150px);left:calc(var(--freeL) + (100% - var(--freeL)) / 2);transform:translate(-50%,0);width:calc(39 * var(--u));aspect-ratio:1;transition:opacity .4s,transform .5s var(--ease)}
-.hint svg{width:100%;height:100%;overflow:visible;animation:bob 3.2s ease-in-out infinite}
-.hint:hover svg{animation-duration:1.4s}
-@keyframes bob{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+.hint svg{width:100%;height:100%;overflow:visible}
 
 /* ---------- bottom controls ---------- */
 .controls{position:absolute;z-index:4;left:var(--freeL);right:0;bottom:clamp(40px,7.5vh,62px);display:flex;justify-content:center;align-items:flex-end;pointer-events:none;transition:opacity .4s,transform .6s var(--ease)}
@@ -187,7 +185,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 #app[data-mode=explore] .top{opacity:0;transform:translateY(-30px)}
 #app[data-mode=explore] .quick{opacity:0;transform:translateX(-160px);pointer-events:none}
 #app[data-mode=explore] .close{opacity:1;transform:none;pointer-events:auto}
-#app[data-mode=explore] .hint,#app[data-mode=detail] .hint,#app:not([data-tab=commandes]) .hint{opacity:0;transform:translate(-50%,-14px);pointer-events:none}
+#app.hint-done .hint,#app[data-mode=explore] .hint,#app[data-mode=detail] .hint,#app:not([data-tab=commandes]) .hint{opacity:0;transform:translate(-50%,-14px);pointer-events:none}
 #app[data-mode=detail] .top{opacity:0;transform:translateY(-14px)}
 #app[data-mode=detail] .back{opacity:1;transform:none;pointer-events:auto}
 #app:not([data-tab=commandes]) .controls{opacity:0;transform:translateY(24px)}
@@ -853,6 +851,7 @@ $$('.ctl').forEach(b=>b.addEventListener('click',()=>{ if(S.tab==='commandes') s
 $('#backBtn').addEventListener('click',()=>setMode('home'));
 $('#closeBtn').addEventListener('click',()=>setMode('home'));
 $('#hintBtn').addEventListener('click',()=>setMode('explore'));
+setTimeout(()=>app.classList.add('hint-done'),4000); // the 360° hint only shows for the first 4 s
 addEventListener('keydown',e=>{ if(e.key==='Escape'){ if($('#volLayer').classList.contains('open')) closeVol(); else if(S.mode!=='home') setMode('home'); } });
 
 function syncNav(){
