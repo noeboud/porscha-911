@@ -306,32 +306,51 @@ renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
 renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.02;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFShadowMap; // PCF honours shadow.radius → soft studio penumbra
 const BG=new THREE.Color('#e9e8e5');
 renderer.setClearColor(BG,1);
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(28,1,.1,200);
 const lin = h => new THREE.Color(h).convertSRGBToLinear();
 
-// studio environment for reflections
+// studio environment for reflections: graded cyclorama (bright ceiling → grey walls → darker floor, with a soft
+// horizon band the paint picks up along the flanks) lit by HDR softboxes whose falloff reads as soft highlights
 (function env(){
   const s=new THREE.Scene();
-  const room=new THREE.Mesh(new THREE.BoxGeometry(40,18,40), new THREE.MeshBasicMaterial({color:lin('#77756f'),side:THREE.BackSide}));
-  room.position.y=7; s.add(room);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.MeshBasicMaterial({color:lin('#dedcd7')}));
-  floor.rotation.x=-Math.PI/2; floor.position.y=-1.9; s.add(floor);
+  const domeGeo=new THREE.SphereGeometry(30,64,48), dp=domeGeo.attributes.position, dc=new Float32Array(dp.count*3);
+  const top=lin('#f1efea'), mid=lin('#a3a09a'), hz=lin('#4d4a46'), bot=lin('#86837d'), c=new THREE.Color();
+  const ss=(a,b,x)=>{ const t=Math.min(1,Math.max(0,(x-a)/(b-a))); return t*t*(3-2*t); };
+  for(let i=0;i<dp.count;i++){
+    const h=dp.getY(i)/30;
+    if(h>0) c.copy(mid).lerp(top,ss(.02,.95,h)); else c.copy(bot).lerp(hz,ss(-.45,-.02,h));
+    c.lerp(hz,Math.exp(-Math.pow(h/.035,2))*.85); c.toArray(dc,i*3);
+  }
+  domeGeo.setAttribute('color',new THREE.BufferAttribute(dc,3));
+  s.add(new THREE.Mesh(domeGeo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,depthWrite:false})));
   const O=new THREE.Vector3(0,0,0);
-  const box=(w,h,p,i)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:new THREE.Color(1,1,1).multiplyScalar(i),side:THREE.DoubleSide})); m.position.copy(p); m.lookAt(O); s.add(m); };
-  box(16,6,new THREE.Vector3(0,15,0),3.4);
-  box(2.4,12,new THREE.Vector3(-15,5,5),2.4);
-  box(2.4,12,new THREE.Vector3(15,5,-5),2.4);
-  box(24,1.4,new THREE.Vector3(0,4,17),1.8);
-  box(24,1.4,new THREE.Vector3(0,6,-17),1.2);
+  // soft-edged HDR panel: radial falloff so reflections fade instead of ending on a hard rectangle
+  const soft=tex((g,w,h)=>{ const r=g.createLinearGradient(0,0,w,0); r.addColorStop(0,'#000'); r.addColorStop(.18,'#fff'); r.addColorStop(.82,'#fff'); r.addColorStop(1,'#000'); g.fillStyle=r; g.fillRect(0,0,w,h);
+    const v=g.createLinearGradient(0,0,0,h); v.addColorStop(0,'rgba(0,0,0,1)'); v.addColorStop(.2,'rgba(0,0,0,0)'); v.addColorStop(.8,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,1)'); g.fillStyle=v; g.fillRect(0,0,w,h); },128,128);
+  soft.encoding=THREE.LinearEncoding;
+  const box=(w,h,p,i,tint='#ffffff')=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:lin(tint).multiplyScalar(i),map:soft,side:THREE.DoubleSide,depthWrite:false})); m.position.copy(p); m.lookAt(O); s.add(m); };
+  box(20,9,new THREE.Vector3(0,16,0),5.2,'#fff8ee');          // overhead key softbox
+  box(3,13,new THREE.Vector3(-16,6,6),2.6,'#f4f7fb');         // cool side strips
+  box(3,13,new THREE.Vector3(16,6,-6),2.6,'#f4f7fb');
+  box(26,2.2,new THREE.Vector3(0,3.2,18),2.2,'#fff3e2');      // long low strips → crisp horizon highlight
+  box(26,2.2,new THREE.Vector3(0,4.5,-18),1.5);
+  box(7,4,new THREE.Vector3(14,9,12),1.8,'#fff1de');          // warm front kicker
   const pm=new THREE.PMREMGenerator(renderer);
-  scene.environment=pm.fromScene(s,.03).texture;
+  scene.environment=pm.fromScene(s,.025).texture;
   pm.dispose();
 })();
-scene.add(new THREE.HemisphereLight(0xffffff,0x9a958d,.55));
-const key=new THREE.DirectionalLight(0xffffff,1.1); key.position.set(3,7,5); scene.add(key);
+scene.add(new THREE.HemisphereLight(0xfffcf6,0x7d786f,.32));
+// key from the overhead softbox: casts the car's real shadow onto the floor and onto itself
+const key=new THREE.DirectionalLight(0xfff6ea,1.35); key.position.set(2.2,9,3.2); scene.add(key); scene.add(key.target);
+key.castShadow=true;
+Object.assign(key.shadow.camera,{left:-3.6,right:3.6,top:3.6,bottom:-3.6,near:2,far:20}); key.shadow.camera.updateProjectionMatrix();
+key.shadow.mapSize.set(2048,2048); key.shadow.bias=-.0004; key.shadow.normalBias=.025; key.shadow.radius=5;
+const fill=new THREE.DirectionalLight(0xe6eef8,.32); fill.position.set(-5,3,-4); scene.add(fill);
 
 /* ---------- helpers ---------- */
 function tex(draw, w=256, h=256){
@@ -435,7 +454,7 @@ function bodyHalf(x){
   const ht=T.ht(x),hf=T.hf(x),zf=T.zf(x),w=T.w(x),hb=T.hb(x),yb=T.yb(x);
   return [[0,ht],[zf*.55,ht+(hf-ht)*.35],[zf,hf],[zf+(w-zf)*.8,hf-(hf-hb)*.3],[w,hb],[w*.97,yb+.08],[w*.86,yb],[0,yb]];
 }
-const HL={x:1.952,y:.70,z:.585,rb:.096};
+const HL={x:2.094,y:.686,z:.585,rb:.098}; // lamp face sits proud at the tip of the wing, flush with the wing face below it
 const ARCH=[{x:FA,cy:TR+.02,r:.405},{x:RA,cy:TR+.02,r:.415}];
 function carve(x,y,z){
   for(const a of ARCH){
@@ -443,7 +462,7 @@ function carve(x,y,z){
     if(d<a.r) y=a.cy+Math.sqrt(a.r*a.r-dx*dx);
     else if(d<a.r+.08 && y<.76 && Math.abs(z)>.55){ const k=1-(d-a.r)/.08; z*=1+.024*k*k; }
   }
-  for(const s of [1,-1]){ const dy=y-HL.y, dz=z-s*HL.z; if(dy*dy+dz*dz<HL.rb*HL.rb && x>HL.x) x=HL.x; }
+  for(const s of [1,-1]){ const dy=y-HL.y, dz=z-s*HL.z; if(dy*dy+dz*dz<HL.rb*HL.rb && x>HL.x-.045) x=HL.x-.045; } // pocket behind the reflector (edge hidden by the ring)
   return [x,y,z];
 }
 function grid(xs,ringAt,closed){
@@ -528,16 +547,25 @@ const rear =(y,z0,z1,n=40)=>span(z0,z1,n).map(z=>hit([-3,y,z],[1,0,0]));
 const side =(s,y,x0,x1,n=40)=>span(x0,x1,n).map(x=>hit([x,y,s*3],[0,0,-s]));
 const down =(pts)=>pts.map(([x,z])=>hit([x,3,z],[0,-1,0]));
 
-// front: chrome blade over black rubber, indicator + parking units, intakes, plate
-ribbon(front(.452,-.70,.70),.02,.008,M.chrome);
-ribbon(front(.418,-.72,.72),.042,.005,M.trim);
+// front, pre-'74 style: slim rubber strip with chrome bead wrapping to the arches; under each lamp a chrome-bezel
+// amber/clear indicator and a slatted horn grille; plate; valance shut-line
+ribbon(front(.47,-.715,.715),.007,.011,M.chrome);
+ribbon(front(.452,-.725,.725),.03,.008,M.trim);
+[-1,1].forEach(s=>{
+  ribbon(side(s,.47,1.62,1.99,24),.007,.011,M.chrome);
+  ribbon(side(s,.452,1.62,1.99,24),.03,.008,M.trim);
+});
 parts.inds=[];
 [-1,1].forEach(s=>{
-  parts.inds.push(ribbon(front(.355,s*.44,s*.66,12),.05,.007,M.ind));
-  ribbon(front(.355,s*.30,s*.44,10),.05,.007,M.park);
+  ribbon(front(.382,s*.50,s*.70,16),.068,.006,M.chrome);
+  parts.inds.push(ribbon(front(.382,s*.555,s*.688,12),.052,.0095,M.ind));
+  ribbon(front(.382,s*.512,s*.553,6),.052,.0095,M.park);
+  ribbon(front(.382,s*.35,s*.475,12),.054,.006,M.chrome);
+  ribbon(front(.382,s*.357,s*.468,12),.042,.0075,M.seam);
+  [-.013,0,.013].forEach(d=>ribbon(front(.382+d,s*.357,s*.468,12),.004,.0095,M.chrome));
 });
-ribbon(front(.268,-.52,.52),.05,.003,M.trim);
-ribbon(front(.325,-.2,.2,12),.1,.014,M.plate);
+ribbon(front(.318,-.2,.2,12),.1,.014,M.plate);
+ribbon(span(-.66,.66,60).map(z=>hit([3,.258,z],[-1,0,0])),.004,.0015,M.seam,'path');
 // front lid shut-line + crest
 const lid=[[.74,.47],[1.3,.465],[1.7,.44],[1.9,.38],[2.0,.25],[2.045,0]]; const lidPath=lid.concat(lid.slice(0,-1).reverse().map(([x,z])=>[x,-z]));
 const smooth=(pts,n)=>new THREE.CatmullRomCurve3(pts.map(([x,z])=>new THREE.Vector3(x,0,z))).getPoints(n).map(v=>[v.x,v.z]);
@@ -595,14 +623,26 @@ const beamMat=new THREE.ShaderMaterial({
   transparent:true,depthWrite:false,side:THREE.DoubleSide
 });
 const beamGeo=new THREE.ConeGeometry(.75,3.2,40,1,true); beamGeo.rotateZ(Math.PI/2); beamGeo.translate(1.6,0,0);
-const reflGeo=new THREE.LatheGeometry(span(.012,.088,10).map(r=>new THREE.Vector2(r,-.03+r*r*3.8)),40); reflGeo.rotateX(Math.PI/2);
+const reflGeo=new THREE.LatheGeometry(span(.012,.088,24).map(r=>new THREE.Vector2(r,-.03+r*r*3.8)),48); reflGeo.rotateX(Math.PI/2);
+// body-colour lamp bowl: the wing's round snout the chrome ring sits on; its tail buries itself in the wing
+const bowlGeo=new THREE.LatheGeometry([[.12,-.19],[.116,-.13],[.111,-.07],[.107,-.025],[.104,.004]].map(([r,z])=>new THREE.Vector2(r,z)),64); bowlGeo.rotateX(Math.PI/2);
+// headlamp glass: H4-style fluting (fine vertical prisms + horizontal split) as a bump map over planar UVs
+const fluteTex=tex((g,w,h)=>{ g.fillStyle='#808080'; g.fillRect(0,0,w,h);
+  for(let i=0;i<w;i+=8){ const r=g.createLinearGradient(i,0,i+8,0); r.addColorStop(0,'#5a5a5a'); r.addColorStop(.5,'#b4b4b4'); r.addColorStop(1,'#5a5a5a'); g.fillStyle=r; g.fillRect(i,0,8,h); }
+  g.fillStyle='rgba(60,60,60,.9)'; g.fillRect(0,h*.47,w,h*.06);
+  for(let j=0;j<h;j+=32){ g.fillStyle='rgba(40,40,40,.35)'; g.fillRect(0,j,w,2); } },256,256);
+fluteTex.encoding=THREE.LinearEncoding;
+M.lens.bumpMap=fluteTex; M.lens.bumpScale=.0025;
 parts.halos=[]; parts.beams=[];
 [-1,1].forEach(s=>{
   const h=new THREE.Group(); h.position.set(HL.x,HL.y,s*HL.z); h.rotation.y=Math.PI/2; add(h);
+  h.add(new THREE.Mesh(bowlGeo,M.paint));
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.094,.011,14,56),M.chrome); ring.position.z=.006; h.add(ring);
   const refl=new THREE.Mesh(reflGeo,M.chrome); refl.material.side=THREE.DoubleSide; h.add(refl);
   const bulb=new THREE.Mesh(new THREE.SphereGeometry(.014,12,8),M.park); bulb.position.z=-.005; h.add(bulb);
-  const lens=new THREE.Mesh(new THREE.SphereGeometry(.12,40,14,0,Math.PI*2,0,.86),M.lens); lens.rotation.x=Math.PI/2; lens.position.z=-.078; h.add(lens);
+  const lensGeo=new THREE.SphereGeometry(.12,48,16,0,Math.PI*2,0,.86), lp=lensGeo.attributes.position, luv=lensGeo.attributes.uv;
+  for(let i=0;i<lp.count;i++) luv.setXY(i,lp.getX(i)/.19+.5,-lp.getZ(i)/.19+.5); // planar UVs so the fluting runs vertical
+  const lens=new THREE.Mesh(lensGeo,M.lens); lens.rotation.x=Math.PI/2; lens.position.z=-.078; h.add(lens);
   [1,-1].forEach(r=>{ const x=new THREE.Mesh(new THREE.BoxGeometry(.17,.016,.004),M.ledX); x.rotation.z=r*Math.PI/4; x.position.z=.046; h.add(x); });
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:halo,color:lin('#22d24a'),transparent:true,opacity:0,depthWrite:false,toneMapped:false}));
   sp.position.z=.09; sp.scale.set(.9,.9,1); sp.renderOrder=5; h.add(sp); parts.halos.push(sp);
@@ -668,8 +708,11 @@ function decal(texture,w,d,x,z,op,order=2,color){
   m.rotation.x=-Math.PI/2; m.position.set(x,.003,z); m.renderOrder=order; floorFX.add(m); return m;
 }
 const shadowTex=radial([[0,'rgba(0,0,0,.62)'],[.45,'rgba(0,0,0,.34)'],[1,'rgba(0,0,0,0)']]);
-decal(shadowTex,5.6,2.9,-.05,0,.85);
-[[FA,.69],[FA,-.69],[RA,.715],[RA,-.715]].forEach(([x,z])=>decal(shadowTex,.75,.5,x,z,.95));
+decal(shadowTex,5.2,2.6,-.05,0,.6);                                                        // soft ambient occlusion under the body
+[[FA,.69],[FA,-.69],[RA,.715],[RA,-.715]].forEach(([x,z])=>decal(shadowTex,.6,.4,x,z,1)); // tyre contact patches
+// shadow catcher: receives the key light's cast shadow on top of the reflective floor
+const catcher=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.ShadowMaterial({opacity:.3,depthWrite:false}));
+catcher.rotation.x=-Math.PI/2; catcher.position.y=.002; catcher.receiveShadow=true; catcher.renderOrder=2; scene.add(catcher);
 parts.pools=[-1,1].map(s=>decal(pool,3.2,1.5,3.5,s*.55,0,3));
 // parking sensor arcs
 parts.arcs=[];
@@ -682,7 +725,9 @@ parts.arcs=[];
 });
 
 /* ---------- reflection (mirrored clone) ---------- */
+car.traverse(o=>{ if(o.isMesh){ const m=o.material, see=m.transparent||m.isMeshBasicMaterial||m.isShaderMaterial; o.castShadow=!see||m===M.well; o.receiveShadow=!m.isShaderMaterial; } });
 const refl=car.clone(); scene.add(refl);
+refl.traverse(o=>{ o.castShadow=false; o.receiveShadow=false; });
 const srcNodes=[], dstNodes=[];
 car.traverse(o=>srcNodes.push(o)); refl.traverse(o=>dstNodes.push(o));
 function syncReflection(){
