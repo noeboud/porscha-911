@@ -1,6 +1,6 @@
 <title>911 Porscha</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inria+Sans:wght@300;400;700&family=Space+Mono:wght@400;700&family=Kode+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;700&display=swap">
 <style>
 /* Layout: in-car head unit. Fixed left rail, 3D car fills the stage, controls float over it. Single light "studio" look by design. */
 :root{
@@ -20,9 +20,10 @@
   --scrim:rgba(64,64,64,.62);
   /* Figma gradient strokes (exported as black outlines by the Framer plugin): white highlight on top fading to a soft grey edge */
   --edge:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.55) 40%,rgba(0,0,0,.07) 100%);
-  --f-ui:"Inria Sans","Helvetica Neue",Arial,sans-serif;
-  --f-mono:"Space Mono",ui-monospace,"Consolas",monospace;
-  --f-switch:"Kode Mono","Space Mono",ui-monospace,monospace;
+  /* Eurostile everywhere: the licensed face when the viewer has it installed, else Saira (closest free match, Google Fonts) */
+  --f-ui:"Eurostile","Eurostile LT Std","Eurostile Next LT Pro","Saira","Helvetica Neue",Arial,sans-serif;
+  --f-mono:var(--f-ui);
+  --f-switch:var(--f-ui);
   --fs-date:calc(13 * var(--u));
   --l1:calc(23 * var(--u));
   --sbw:calc(86 * var(--u));
@@ -88,7 +89,7 @@ button:focus-visible,[role=switch]:focus-visible{outline:2px solid var(--accent)
 .rule{flex:1;height:1px;align-self:flex-start;margin-top:calc(var(--l1) / 2);background:linear-gradient(90deg,rgba(0,0,0,.2),rgba(31,31,31,.14))}
 .diag{width:calc(54 * var(--u));flex:none;margin-top:calc(var(--l1) / 2);display:block}
 .clock{text-align:right;flex:none;border-bottom:1px solid;border-image:linear-gradient(90deg,rgba(51,51,51,.12),rgba(102,102,102,.05)) 1;padding:0 2px calc(11 * var(--u)) 0}
-#date{font-family:var(--f-mono);color:rgba(0,0,0,.6);font-size:var(--fs-date);line-height:var(--l1);letter-spacing:-.03em;text-transform:uppercase;white-space:nowrap}
+#date{font-family:var(--f-mono);color:rgba(0,0,0,.6);font-size:var(--fs-date);line-height:var(--l1);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
 #time{font-family:var(--f-mono);font-size:calc(24 * var(--u));line-height:1.1;margin-top:calc(2 * var(--u));letter-spacing:-.03em;color:#000;font-variant-numeric:tabular-nums}
 
 .back{position:absolute;z-index:6;left:calc(var(--sbw) + 14 * var(--u));top:calc(16 * var(--u));display:flex;align-items:center;gap:calc(6 * var(--u));font-size:calc(16 * var(--u));letter-spacing:-.03em;font-weight:400;
